@@ -2,7 +2,7 @@ eg:
 ```
 class User < ApplicationRecord
 
-  include ExtendJsonFieldable
+  include Extendable
   store_json :store_json, accessors: {
     is_parent:   TrueClass,
     name:        String,
@@ -23,5 +23,7 @@ User.store_jsons_i18n
 # scope
 
 User.with_name("xx")
-User.with_is_parent('t' || 'f' || true || false || 'true')
+User.with_is_parent
+User.with_not_is_parent
+
 ```

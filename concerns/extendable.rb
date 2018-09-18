@@ -1,4 +1,4 @@
-module ExtendJsonFieldable
+module Extendable
   extend ActiveSupport::Concern
 
   included do
@@ -40,18 +40,6 @@ module ExtendJsonFieldable
         end
       end
 
-      instance_eval do
-        table = self.table_name
-
-        private :"callback_validate_#{store_field}"
-
-        before_save :"callback_validate_#{store_field}"
-
-        define_method "#{store_field.to_s.pluralize}_i18n" do
-          I18n.t("#{table.singularize}.#{store_field}").deep_symbolize_keys rescue {}
-        end
-      end
-
       accessors.each do |_attr, _attr_class|
         class_eval do
 
@@ -77,28 +65,35 @@ module ExtendJsonFieldable
           end
         end
 
-        instance_eval do
+        private :"callback_validate_#{store_field}"
+
+        before_save :"callback_validate_#{store_field}"
+
+        singleton_class.send(:define_method, "#{store_field.to_s.pluralize}_i18n") {
           table = self.table_name
-          proc {
-            scope "with_#{fix_text}#{_attr}", ->(val) { where("#{table}.#{store_field} ->> '#{_attr}' = ? ", val) }
-          }.call if _attr_class.eql?(String)
 
-          proc {
-            scope "with_#{fix_text}#{_attr}", -> { where("#{table}.#{store_field} ->> '#{_attr}' = ? ", 't') }
-            scope "with_#{fix_text}not_#{_attr}", -> {
-              where(
-                "#{table}.#{store_field} ->> '#{_attr}' != ? OR
-                 #{table}.#{store_field} ->> '#{_attr}' IS NULL", 'f'
-              )
-            }
-          }.call if _attr_class.eql?(TrueClass)
+          I18n.t("#{table.singularize}.#{store_field}").deep_symbolize_keys rescue {}
+        }
 
-          proc {
-            scope "with#{fix_text}#{_attr}", ->(val) { where("(#{table}.#{store_field} ->> '#{_attr}')::INT = ? ", val) }
-          }.call if _attr_class.eql?(Integer)
-        end
+        table = self.table_name
+        proc {
+          self.scope "with_#{fix_text}#{_attr}", ->(val) { where("#{table}.#{store_field} ->> '#{_attr}' = ? ", val) }
+        }.call if _attr_class.eql?(String)
+
+        proc {
+          self.scope "with_#{fix_text}#{_attr}", -> { where("#{table}.#{store_field} ->> '#{_attr}' = ? ", 't') }
+          self.scope "with_#{fix_text}not_#{_attr}", -> {
+            where(
+              "#{table}.#{store_field} ->> '#{_attr}' != ? OR
+               #{table}.#{store_field} ->> '#{_attr}' IS NULL", 'f'
+            )
+          }
+        }.call if _attr_class.eql?(TrueClass)
+
+        proc {
+          self.scope "with#{fix_text}#{_attr}", ->(val) { where("(#{table}.#{store_field} ->> '#{_attr}')::INT = ? ", val) }
+        }.call if _attr_class.eql?(Integer)
       end
     end
-
   end
 end
